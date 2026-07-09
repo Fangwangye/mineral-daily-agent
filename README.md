@@ -92,8 +92,7 @@ flowchart LR
 - **Lint**：`ruff check` 零告警（E/F/I/UP/B/W）；
 - **CI**：GitHub Actions（lint + test）；
 - **配置即环境变量**：`.env.example` 全量注释，LLM 端点/模型/数据源均可插拔；
-- **日志**：全部走 stderr——stdout 是 MCP stdio 的 JSON-RPC 信道，这是 MCP server 的硬约束；
-- **提交历史**：全程由 Claude Code 编写，逐里程碑提交（见 `git log`）。
+- **日志**：全部走 stderr——stdout 是 MCP stdio 的 JSON-RPC 信道，这是 MCP server 的硬约束。
 
 ## 已知局限（诚实声明）
 
