@@ -10,7 +10,6 @@ OpenAI function calling schema 供 LLM 使用。
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
@@ -18,6 +17,7 @@ import sys
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 
+import anyio
 from mcp import ClientSession, StdioServerParameters, types
 from mcp.client.stdio import get_default_environment, stdio_client
 from mcp.client.streamable_http import streamablehttp_client
@@ -120,7 +120,10 @@ class MCPFleet:
                 streamablehttp_client(spec.http_url)
             )
         session = await stack.enter_async_context(ClientSession(read, write))
-        await asyncio.wait_for(session.initialize(), timeout=30)
+        # 注意不要用 asyncio.wait_for：MCP 会话运行在 anyio cancel scope 内，
+        # asyncio 取消会以 CancelledError 逃逸；anyio.fail_after 抛标准 TimeoutError
+        with anyio.fail_after(30):
+            await session.initialize()
         listed = await session.list_tools()
         for tool in listed.tools:
             self.tools[f"{spec.name}__{tool.name}"] = _ToolEntry(session, tool, spec.name)
@@ -152,9 +155,8 @@ class MCPFleet:
         if entry is None:
             return f"[tool error] 未知工具 {full_name}，可用: {', '.join(self.tools)}"
         try:
-            result = await asyncio.wait_for(
-                entry.session.call_tool(entry.tool.name, arguments), timeout=timeout
-            )
+            with anyio.fail_after(timeout):
+                result = await entry.session.call_tool(entry.tool.name, arguments)
         except TimeoutError:
             return f"[tool error] {full_name} 超时（>{timeout:.0f}s）"
         except Exception as exc:  # noqa: BLE001
