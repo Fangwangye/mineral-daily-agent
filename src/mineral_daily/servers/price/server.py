@@ -46,7 +46,7 @@ async def get_trend(commodity: str, days: int = 30) -> dict[str, Any]:
 
 
 def main() -> None:
-    args = build_transport_parser("lme-price-mcp", default_port=8003).parse_args()
+    args = build_transport_parser("lme-price-mcp", default_port=18003).parse_args()
     run_server(mcp, args)
 
 

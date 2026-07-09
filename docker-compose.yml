@@ -1,0 +1,71 @@
+# 矿权日报 Agent：3 个 MCP server（streamable-http）+ agent 编排
+#
+# 一条命令演示（先在 .env 写入 DEEPSEEK_API_KEY）：
+#   docker compose run --rm --build agent "给我生成一份关于 Pilbara 锂矿的今日简报"
+# 简报输出到宿主机 ./briefings/。离线演示：MINERAL_OFFLINE=1 docker compose run --rm agent
+#
+# 端口选用 18001-18003（8001-8003 是本地开发高冲突段）。
+
+x-server-base: &server-base
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  image: mineral-daily-agent:latest
+  restart: unless-stopped
+
+services:
+  news-mcp:
+    <<: *server-base
+    command: mining-news-mcp --transport http --host 0.0.0.0 --port 18001
+    ports: ["18001:18001"]
+    healthcheck: &hc
+      test: ["CMD", "python", "-c", "import socket, os; socket.create_connection(('127.0.0.1', int(os.environ['HC_PORT'])), 3)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    environment:
+      MINERAL_OFFLINE: ${MINERAL_OFFLINE:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      NEWS_FEEDS: ${NEWS_FEEDS:-}
+      HC_PORT: "18001"
+
+  pdf-mcp:
+    <<: *server-base
+    command: mineral-pdf-mcp --transport http --host 0.0.0.0 --port 18002
+    ports: ["18002:18002"]
+    healthcheck: *hc
+    environment:
+      MINERAL_OFFLINE: ${MINERAL_OFFLINE:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      HC_PORT: "18002"
+
+  price-mcp:
+    <<: *server-base
+    command: lme-price-mcp --transport http --host 0.0.0.0 --port 18003
+    ports: ["18003:18003"]
+    healthcheck: *hc
+    environment:
+      MINERAL_OFFLINE: ${MINERAL_OFFLINE:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      HC_PORT: "18003"
+
+  agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: mineral-daily-agent:latest
+    profiles: ["agent"]  # 仅 docker compose run 时启动，不随 up 常驻
+    entrypoint: ["mineral-daily", "--http"]
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-chat}
+      MINERAL_OFFLINE: ${MINERAL_OFFLINE:-}
+      MCP_SERVERS: news=http://news-mcp:18001/mcp,pdf=http://pdf-mcp:18002/mcp,price=http://price-mcp:18003/mcp
+    volumes:
+      - ./briefings:/app/briefings
+    depends_on:
+      news-mcp: { condition: service_healthy }
+      pdf-mcp: { condition: service_healthy }
+      price-mcp: { condition: service_healthy }

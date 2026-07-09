@@ -46,7 +46,7 @@ async def fetch_article(url: str) -> dict[str, Any]:
 
 
 def main() -> None:
-    args = build_transport_parser("mining-news-mcp", default_port=8001).parse_args()
+    args = build_transport_parser("mining-news-mcp", default_port=18001).parse_args()
     run_server(mcp, args)
 
 

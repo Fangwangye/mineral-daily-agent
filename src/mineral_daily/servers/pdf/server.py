@@ -88,7 +88,7 @@ async def extract_resources(pdf_url: str) -> dict[str, Any]:
 
 
 def main() -> None:
-    args = build_transport_parser("mineral-pdf-mcp", default_port=8002).parse_args()
+    args = build_transport_parser("mineral-pdf-mcp", default_port=18002).parse_args()
     run_server(mcp, args)
 
 

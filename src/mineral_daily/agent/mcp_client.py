@@ -37,9 +37,9 @@ class ServerSpec:
 
 
 DEFAULT_SPECS = (
-    ServerSpec("news", "mineral_daily.servers.news.server", "http://127.0.0.1:8001/mcp"),
-    ServerSpec("pdf", "mineral_daily.servers.pdf.server", "http://127.0.0.1:8002/mcp"),
-    ServerSpec("price", "mineral_daily.servers.price.server", "http://127.0.0.1:8003/mcp"),
+    ServerSpec("news", "mineral_daily.servers.news.server", "http://127.0.0.1:18001/mcp"),
+    ServerSpec("pdf", "mineral_daily.servers.pdf.server", "http://127.0.0.1:18002/mcp"),
+    ServerSpec("price", "mineral_daily.servers.price.server", "http://127.0.0.1:18003/mcp"),
 )
 
 
@@ -75,25 +75,37 @@ class MCPFleet:
     failed_servers: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self._stack = AsyncExitStack()
+        # 每个 server 独立 ExitStack：单点失败/关闭异常不拖垮其余连接
+        self._stacks: list[AsyncExitStack] = []
 
     async def __aenter__(self) -> MCPFleet:
-        await self._stack.__aenter__()
         for spec in self.specs:
+            stack = AsyncExitStack()
+            await stack.__aenter__()
             try:
-                await self._connect(spec)
+                await self._connect(spec, stack)
+                self._stacks.append(stack)
             except Exception as exc:  # noqa: BLE001 - 单 server 故障降级，不中断整体
                 logger.warning("server %s 连接失败: %s", spec.name, exc)
                 self.failed_servers[spec.name] = f"{type(exc).__name__}: {exc}"
+                await self._close_stack(stack)
         if not self.tools:
-            await self._stack.aclose()
             raise RuntimeError(f"所有 MCP server 均不可用: {self.failed_servers}")
         return self
 
     async def __aexit__(self, *exc_info) -> None:
-        await self._stack.__aexit__(*exc_info)
+        for stack in reversed(self._stacks):
+            await self._close_stack(stack)
+        self._stacks.clear()
 
-    async def _connect(self, spec: ServerSpec) -> None:
+    @staticmethod
+    async def _close_stack(stack: AsyncExitStack) -> None:
+        try:
+            await stack.aclose()
+        except Exception as exc:  # noqa: BLE001 - 传输层清理异常只记日志
+            logger.debug("关闭 MCP 连接时忽略异常: %r", exc)
+
+    async def _connect(self, spec: ServerSpec, stack: AsyncExitStack) -> None:
         if self.mode == "stdio":
             env = get_default_environment()
             for key in _PASSTHROUGH_ENV:
@@ -102,12 +114,12 @@ class MCPFleet:
             params = StdioServerParameters(
                 command=sys.executable, args=["-m", spec.stdio_module], env=env
             )
-            read, write = await self._stack.enter_async_context(stdio_client(params))
+            read, write = await stack.enter_async_context(stdio_client(params))
         else:
-            read, write, _ = await self._stack.enter_async_context(
+            read, write, _ = await stack.enter_async_context(
                 streamablehttp_client(spec.http_url)
             )
-        session = await self._stack.enter_async_context(ClientSession(read, write))
+        session = await stack.enter_async_context(ClientSession(read, write))
         await asyncio.wait_for(session.initialize(), timeout=30)
         listed = await session.list_tools()
         for tool in listed.tools:

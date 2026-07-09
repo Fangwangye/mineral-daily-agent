@@ -95,4 +95,4 @@ class TestUnits:
         monkeypatch.setenv("MCP_SERVERS", "news=http://news-mcp:9001/mcp")
         specs = {s.name: s for s in resolve_specs()}
         assert specs["news"].http_url == "http://news-mcp:9001/mcp"
-        assert specs["price"].http_url == "http://127.0.0.1:8003/mcp"
+        assert specs["price"].http_url == "http://127.0.0.1:18003/mcp"
