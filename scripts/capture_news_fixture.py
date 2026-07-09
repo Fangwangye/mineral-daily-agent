@@ -1,11 +1,11 @@
-"""采集真实 RSS + 一篇文章页面作为离线 fixture（供单测与 MINERAL_OFFLINE=1 演示）。
+"""采集真实 RSS + 一篇文章页面作为离线 fixture（供单测与 MINERAL_OFFLINE=1 离线模式）。
 
 产物：
 - src/mineral_daily/servers/news/data/rss_fixture.xml       mining.com RSS 原文
 - src/mineral_daily/servers/news/data/article_fixture.html  RSS 内一篇文章的完整 HTML
 - src/mineral_daily/servers/news/data/fixture_meta.json     采集时间与文章 URL
 
-优先挑选含 lithium/Pilbara 关键词的条目，便于演示场景（Pilbara 锂矿简报）自然命中。
+优先挑选含 lithium/Pilbara 关键词的条目，便于 Pilbara 锂矿类简报请求在离线模式下自然命中。
 
 用法：python scripts/capture_news_fixture.py
 """

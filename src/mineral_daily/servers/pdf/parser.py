@@ -190,8 +190,8 @@ def _parse_text_lines(text: str, page_no: int) -> list[ResourceRow]:
         rest = line[m.end() :].strip()
         if not rest or not _NUMERIC_REST_RE.match(rest):
             continue
-        nums = [parse_number(tok) for tok in _NUM_TOKEN_RE.findall(rest)]
-        nums = [n for n in nums if n is not None]
+        parsed = [parse_number(tok) for tok in _NUM_TOKEN_RE.findall(rest)]
+        nums: list[float] = [n for n in parsed if n is not None]
         if len(nums) < 3:
             continue
         tonnage = nums[0]

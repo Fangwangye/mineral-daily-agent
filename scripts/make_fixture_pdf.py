@@ -1,4 +1,4 @@
-"""生成 fixture 储量报告 PDF（供单测与离线演示）。
+"""生成 fixture 储量报告 PDF（供单测与离线模式）。
 
 两页两张表，覆盖两种单位体系：
 - p1 锂矿（Pilgangoora 风格）：Tonnes (Mt) / Grade (% Li2O) / Contained Li2O (kt)
@@ -56,7 +56,7 @@ def main() -> None:
     story = [
         Paragraph("Pilgangoora Lithium Project — Technical Report [FIXTURE]", styles["Title"]),
         Paragraph(
-            "This is a FIXTURE document for automated tests and offline demo. "
+            "This is a FIXTURE document for automated tests and offline mode. "
             "Numbers are illustrative (magnitudes reference public disclosures). "
             "The following Mineral Resource estimate is reported inclusive of "
             "Measured, Indicated and Inferred categories.",

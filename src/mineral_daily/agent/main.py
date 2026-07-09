@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import io
 import os
 import sys
 from pathlib import Path
@@ -83,8 +84,9 @@ def main() -> None:
     setup_logging()
     # Windows 控制台默认 GBK，强制 UTF-8 避免中文简报打印失败
     with contextlib.suppress(Exception):
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
+        for stream in (sys.stdout, sys.stderr):
+            if isinstance(stream, io.TextIOWrapper):
+                stream.reconfigure(encoding="utf-8")
     args = build_parser().parse_args()
     raise SystemExit(asyncio.run(_run(args)))
 

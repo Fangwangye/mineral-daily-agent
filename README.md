@@ -79,7 +79,7 @@ flowchart LR
 │   ├── servers/pdf/     server · parser(双通道) · models · data/(fixture PDF)
 │   ├── servers/price/   server · providers(westmetall+快照) · data/prices_snapshot.json
 │   └── agent/           main(CLI) · mcp_client(MCPFleet) · react · llm · briefing
-├── tests/               42 用例：三 server 单测 + FakeLLM×真实 MCP stdio 全链路 E2E
+├── tests/               45 用例：三 server 单测 + FakeLLM×真实 MCP stdio 全链路 E2E
 ├── scripts/             快照刷新 / fixture 采集 / fixture PDF 生成（全部可复现）
 ├── docker-compose.yml   3×streamable-http server + agent（healthcheck 编排）
 ├── mcp-config.json      Claude Desktop / Cursor 直接接入（stdio）
@@ -88,11 +88,13 @@ flowchart LR
 
 ## 工程规范
 
-- **测试**：`pytest` 42 用例全离线可跑（respx 模拟 http、真实 fixture、真实 MCP stdio E2E），`network` 标记的实网用例默认跳过；
-- **Lint**：`ruff check` 零告警（E/F/I/UP/B/W）；
-- **CI**：GitHub Actions（lint + test）；
+- **测试**：`pytest` 45 用例全离线可跑（respx 模拟 http、真实 fixture、真实 MCP stdio E2E），`network` 标记的实网用例默认跳过；
+- **Lint / 类型**：`ruff check` 与 `mypy src` 零告警；
+- **依赖锁**：[requirements.lock](requirements.lock)（`uv pip compile --universal` 生成，跨平台 marker），Docker 构建按锁安装保证可复现；
+- **CI**：GitHub Actions（ruff + mypy + pytest）；
 - **配置即环境变量**：`.env.example` 全量注释，LLM 端点/模型/数据源均可插拔；
-- **日志**：全部走 stderr——stdout 是 MCP stdio 的 JSON-RPC 信道，这是 MCP server 的硬约束。
+- **日志**：全部走 stderr——stdout 是 MCP stdio 的 JSON-RPC 信道，这是 MCP server 的硬约束；
+- **HTTP 传输安全**：按 MCP 规范默认启用 Host/Origin 校验（DNS-rebinding 防护，白名单经 `MCP_ALLOWED_HOSTS` 扩展）；compose 端口仅发布到宿主机 loopback；容器以非 root 用户运行。
 
 ## 已知局限（诚实声明）
 
@@ -101,9 +103,9 @@ flowchart LR
 - 新闻默认单源 mining.com（`NEWS_FEEDS` 可加源）；RSS 仅覆盖近几十条，不做历史回溯；
 - 简报质量最终受 LLM 影响；系统通过溯源硬规则 + 步数/超时守护 + 强制合成兜底约束，但不能完全消除模型误读。
 
-## 交付对照（题目要求 → 实现）
+## 功能与代码导航
 
-| 要求 | 位置 |
+| 功能 | 位置 |
 | --- | --- |
 | mining-news-mcp：`search` / `fetch_article` | [src/mineral_daily/servers/news/](src/mineral_daily/servers/news/) |
 | mineral-pdf-mcp：`extract_resources`（NI 43-101 Indicated/Inferred） | [src/mineral_daily/servers/pdf/](src/mineral_daily/servers/pdf/) |

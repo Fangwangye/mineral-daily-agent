@@ -46,7 +46,7 @@ def _entry_datetime(entry: Any) -> datetime | None:
     for attr in ("published_parsed", "updated_parsed"):
         t = entry.get(attr)
         if t:
-            return datetime(*t[:6], tzinfo=UTC)
+            return datetime(t[0], t[1], t[2], t[3], t[4], t[5], tzinfo=UTC)
     return None
 
 

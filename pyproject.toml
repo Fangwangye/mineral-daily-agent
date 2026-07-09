@@ -26,6 +26,7 @@ dev = [
     "pytest-asyncio>=0.23",
     "respx>=0.21",
     "ruff>=0.5",
+    "mypy>=1.10",
     "reportlab>=4.1",
 ]
 
@@ -54,6 +55,15 @@ select = ["E", "F", "I", "UP", "B", "W"]
 [tool.ruff.lint.per-file-ignores]
 # 系统提示词为中文 prose，不因行宽改写语义
 "src/mineral_daily/agent/briefing.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+# feedparser / trafilatura / pdfplumber / reportlab 无类型存根
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

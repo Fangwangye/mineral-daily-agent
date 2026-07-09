@@ -24,19 +24,24 @@ def build_transport_parser(name: str, default_port: int) -> argparse.ArgumentPar
     return parser
 
 
-def _transport_security() -> TransportSecuritySettings:
-    """http 模式的 Host 校验策略。
+def _transport_security(port: int) -> TransportSecuritySettings:
+    """http 模式的 Host/Origin 校验（MCP 规范要求校验 Origin 防 DNS rebinding，默认启用）。
 
-    SDK 默认的 DNS-rebinding 防护只放行 localhost 类 Host，容器间用服务名
-    （如 news-mcp:18001）寻址会被 421 拒绝。因此默认关闭该防护（compose 内网/
-    本地演示场景）；对外部署时设置 MCP_ALLOWED_HOSTS=host1:port,host2:port 启用白名单。
+    白名单 = 127.0.0.1/localhost（本机调试）+ MCP_ALLOWED_HOSTS 追加项（逗号分隔；
+    容器部署时注入本服务的 compose 服务名，如 news-mcp:18001，见 docker-compose.yml）。
+    仅在完全受控的内网调试时可设 MCP_ALLOWED_HOSTS=* 整体关闭防护。
     """
     raw = os.environ.get("MCP_ALLOWED_HOSTS", "").strip()
-    if not raw or raw == "*":
+    if raw == "*":
         return TransportSecuritySettings(enable_dns_rebinding_protection=False)
-    hosts = [h.strip() for h in raw.split(",") if h.strip()]
+    hosts = [f"127.0.0.1:{port}", f"localhost:{port}"]
+    hosts += [h.strip() for h in raw.split(",") if h.strip()]
     origins = [f"http://{h}" for h in hosts] + [f"https://{h}" for h in hosts]
-    return TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins)
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=hosts,
+        allowed_origins=origins,
+    )
 
 
 def run_server(mcp: FastMCP, args: argparse.Namespace) -> None:
@@ -44,7 +49,7 @@ def run_server(mcp: FastMCP, args: argparse.Namespace) -> None:
     if args.transport == "http":
         mcp.settings.host = args.host
         mcp.settings.port = args.port
-        mcp.settings.transport_security = _transport_security()
+        mcp.settings.transport_security = _transport_security(args.port)
         mcp.run(transport="streamable-http")
     else:
         mcp.run()
