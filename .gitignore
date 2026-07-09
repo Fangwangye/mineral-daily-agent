@@ -8,9 +8,10 @@ build/
 .pytest_cache/
 .ruff_cache/
 
-# 运行时产物
+# 运行时产物（eval/sample_trace.json 是打包样例，需保留）
 .cache/
 briefings/
+eval/last_trace.json
 .env
 
 # IDE / OS

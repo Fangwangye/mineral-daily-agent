@@ -1,0 +1,3 @@
+{"id": "pilbara-lithium", "request": "给我生成一份关于 Pilbara 锂矿的今日简报", "expect_keywords": ["Pilbara", "Li", "碳酸锂"]}
+{"id": "pilbara-copper", "request": "给我一份 Pilbara 锂矿加铜市场的今日简报", "expect_keywords": ["Pilbara", "锂", "铜"]}
+{"id": "lithium-only", "request": "生成一份聚焦碳酸锂价格与锂矿供给的每日简报", "expect_keywords": ["碳酸锂", "价格"]}

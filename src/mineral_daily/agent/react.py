@@ -86,7 +86,7 @@ async def run_agent(
         for tc, result in zip(reply.tool_calls, results, strict=True):
             call_log.append(
                 {"step": step, "tool": tc.name, "arguments": tc.arguments,
-                 "is_error": result.startswith("[tool error]")}
+                 "is_error": result.startswith("[tool error]"), "result": result}
             )
             messages.append(
                 {"role": "tool", "tool_call_id": tc.id, "content": result}

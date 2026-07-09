@@ -79,16 +79,36 @@ flowchart LR
 │   ├── servers/pdf/     server · parser(双通道) · models · data/(fixture PDF)
 │   ├── servers/price/   server · providers(westmetall+快照) · data/prices_snapshot.json
 │   └── agent/           main(CLI) · mcp_client(MCPFleet) · react · llm · briefing
-├── tests/               45 用例：三 server 单测 + FakeLLM×真实 MCP stdio 全链路 E2E
+│   └── evaluation/      scorecard(确定性质量评分) · llm_judge(可选 faithfulness)
+├── tests/               56 用例：三 server 单测 + FakeLLM×真实 MCP stdio E2E + 评分器
+├── eval/                简报质量评测:cases.jsonl · run_eval.py · README（反幻觉溯源）
 ├── scripts/             快照刷新 / fixture 采集 / fixture PDF 生成（全部可复现）
 ├── docker-compose.yml   3×streamable-http server + agent（healthcheck 编排）
 ├── mcp-config.json      Claude Desktop / Cursor 直接接入（stdio）
 └── RUN.md               5 分钟运行手册（Docker / 本地 / Claude Desktop 三条路径）
 ```
 
+## 简报可信吗:质量评测（eval/）
+
+LLM 最危险的失败是"编一个看起来合理的数字"。[eval/](eval/) 用**确定性**方法(不依赖另一个
+LLM,可离线在 CI 跑)对简报打分,核心是**反幻觉的数字溯源**:把简报数据表格里的每个数字
+拿去和工具实际返回的数字比对,对不上就是疑似幻觉。真实运行一份 Pilbara 简报,评测报告:
+
+```
+[PASS] overall=1.0
+  ✓ structure   1.0  章节齐全
+  ✓ citations   1.0  新闻章节含 3 个来源链接
+  ✓ grounding   1.0  33 个表格数字全部溯源到工具返回      ← 零编造
+  ✓ honesty     1.0  已如实声明数据降级
+```
+
+五项检查(structure / citations / grounding / honesty / topicality)+ 可选 LLM faithfulness
+评审,详见 [eval/README.md](eval/README.md)。`python eval/run_eval.py --trace <run.json>` 离线即可评分。
+
 ## 工程规范
 
-- **测试**：`pytest` 45 用例全离线可跑（respx 模拟 http、真实 fixture、真实 MCP stdio E2E），`network` 标记的实网用例默认跳过；CI 附覆盖率报告（pytest-cov）；
+- **测试**：`pytest` 56 用例全离线可跑（respx 模拟 http、真实 fixture、真实 MCP stdio E2E、评分器正反例），`network` 标记的实网用例默认跳过；CI 附覆盖率报告（pytest-cov）；
+- **质量评测**：`eval/` 对简报做反幻觉数字溯源等五项确定性打分，CI 用打包样例自检评分器；
 - **Lint / 类型**：`ruff check` 与 `mypy src` 零告警；
 - **供应链**：[requirements.lock](requirements.lock)（`uv pip compile --universal` 生成，跨平台 marker）锁定依赖，Docker 按锁安装保证可复现构建；CI 独立作业跑 `pip-audit` 审计锁内依赖；
 - **CI**：GitHub Actions，Python 3.11–3.13 矩阵（ruff + mypy + pytest + coverage）+ audit 作业；

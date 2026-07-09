@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import contextlib
 import io
+import json
 import os
 import sys
 from pathlib import Path
@@ -42,6 +43,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tool-timeout", type=float, default=60.0,
                         help="单次工具调用超时秒数（默认 60）")
     parser.add_argument("--out-dir", default="briefings", help="简报输出目录（默认 briefings/）")
+    parser.add_argument("--trace", metavar="PATH",
+                        help="把本次运行（简报+工具原始返回+notes）转储为 JSON，供 eval 评测")
     return parser
 
 
@@ -75,6 +78,16 @@ async def _run(args: argparse.Namespace) -> int:
         f"简报已保存 -> {path}",
         file=sys.stderr,
     )
+    if args.trace:
+        trace = {
+            "request": args.request,
+            "briefing_md": result.briefing_md,
+            "steps": result.steps,
+            "tool_calls": result.tool_calls,
+            "notes": result.notes,
+        }
+        Path(args.trace).write_text(json.dumps(trace, ensure_ascii=False, indent=2), "utf-8")
+        print(f"      运行痕迹已转储 -> {args.trace}", file=sys.stderr)
     print(result.briefing_md)
     return 0
 
