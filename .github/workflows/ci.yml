@@ -8,11 +8,15 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install
         run: pip install -e ".[dev]"
@@ -20,5 +24,17 @@ jobs:
         run: ruff check src tests scripts
       - name: Type check (mypy)
         run: mypy src
-      - name: Test（离线用例，含真实 MCP stdio E2E；network 标记用例默认跳过）
-        run: pytest -q
+      - name: Test + coverage（离线用例，含真实 MCP stdio E2E；network 标记用例默认跳过）
+        run: pytest -q --cov --cov-report=term-missing
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: pip-audit（按 requirements.lock 审计已锁依赖）
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.lock

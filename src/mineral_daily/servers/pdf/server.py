@@ -1,13 +1,13 @@
 """mineral-pdf-mcp：矿权报告储量抽取 MCP server。
 
 工具：extract_resources(pdf_url)
+返回类型为 pydantic 模型 → SDK 自动发布 outputSchema 并附带 structuredContent。
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
 
 import anyio
 from mcp.server.fastmcp import FastMCP
@@ -16,6 +16,7 @@ from mineral_daily.common import http
 from mineral_daily.common.runner import build_transport_parser, run_server
 
 from . import parser
+from .models import ExtractionResult
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ async def _resolve_pdf(pdf_url: str) -> tuple[Path, list[str]]:
 
 
 @mcp.tool()
-async def extract_resources(pdf_url: str) -> dict[str, Any]:
+async def extract_resources(pdf_url: str) -> ExtractionResult:
     """从矿权报告 PDF 抽取储量表（Indicated/Inferred 等类别的矿石量/品位/金属量）。
 
     Args:
@@ -84,7 +85,7 @@ async def extract_resources(pdf_url: str) -> dict[str, Any]:
         lambda: parser.parse_pdf(path, source=pdf_url)
     )
     result.notes = notes + result.notes
-    return result.model_dump()
+    return result
 
 
 def main() -> None:

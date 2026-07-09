@@ -51,6 +51,7 @@ copy .env.example .env                  # 填 DEEPSEEK_API_KEY
 ```bash
 .venv\Scripts\pip install -e ".[dev]"
 .venv\Scripts\python -m pytest -q      # 45 个用例：三 server 单测 + 真实 MCP stdio 全链路 E2E（离线、无需 key）
+.venv\Scripts\python -m pytest -q --cov --cov-report=term-missing   # 附覆盖率
 .venv\Scripts\python -m ruff check src tests scripts
 .venv\Scripts\python -m mypy src
 ```

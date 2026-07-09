@@ -124,15 +124,17 @@ class MCPFleet:
         # asyncio 取消会以 CancelledError 逃逸；anyio.fail_after 抛标准 TimeoutError
         with anyio.fail_after(30):
             await session.initialize()
-        listed = await session.list_tools()
-        for tool in listed.tools:
-            self.tools[f"{spec.name}__{tool.name}"] = _ToolEntry(session, tool, spec.name)
-        logger.info(
-            "server %s 就绪 (%s): %s",
-            spec.name,
-            self.mode,
-            ", ".join(t.name for t in listed.tools),
-        )
+        names: list[str] = []
+        cursor: str | None = None
+        while True:  # 规范允许 tools/list 分页，循环 nextCursor 取全量
+            listed = await session.list_tools(cursor=cursor)
+            for tool in listed.tools:
+                self.tools[f"{spec.name}__{tool.name}"] = _ToolEntry(session, tool, spec.name)
+                names.append(tool.name)
+            cursor = listed.nextCursor
+            if not cursor:
+                break
+        logger.info("server %s 就绪 (%s): %s", spec.name, self.mode, ", ".join(names))
 
     def openai_tools(self) -> list[dict]:
         """把 MCP 工具目录转成 OpenAI function calling schema。"""

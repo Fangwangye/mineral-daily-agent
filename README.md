@@ -38,7 +38,7 @@ flowchart LR
 ```
 
 - **stdio 模式（默认）**：agent 用当前解释器把 3 个 server 拉成子进程——本地一条命令即是完整 MCP 部署，也是 Claude Desktop 的接入方式（[mcp-config.json](mcp-config.json)）。
-- **streamable-http 模式**：`docker compose` 三容器分布式部署，agent 通过 `MCP_SERVERS` 环境变量寻址，healthcheck 保证启动顺序。
+- **streamable-http 模式**：`docker compose` 三容器分布式部署，agent 通过 `MCP_SERVERS` 环境变量寻址；healthcheck 是 MCP 层探针（完成真实 `initialize` 握手才算就绪，见 [healthcheck.py](src/mineral_daily/common/healthcheck.py)），比 TCP 探活更严格。
 
 ## 三个 MCP server
 
@@ -64,7 +64,7 @@ flowchart LR
 
 ## Agent 设计（自写 ReAct，不依赖编排框架）
 
-1. **工具自动发现**：连接每个 server 后 `list_tools()`，以 `server__tool` 命名空间转成 OpenAI function schema——新增 server 无需改 agent 代码；
+1. **工具自动发现**：连接每个 server 后 `list_tools()`（循环 `nextCursor`，按规范支持分页），以 `server__tool` 命名空间转成 OpenAI function schema——新增 server 无需改 agent 代码；
 2. **循环守护**：最大 12 步；单工具 60s 超时；同一步多个工具调用 `asyncio.gather` 并行；
 3. **错误自适应**：工具失败以 `[tool error] …` 文本回喂模型换路（例如换 URL、换关键词），单 server 连接失败仅降级并记入简报；
 4. **保证产出**：步数耗尽时禁用工具、注入强制合成提示，永远给出结构完整的简报；
@@ -88,13 +88,14 @@ flowchart LR
 
 ## 工程规范
 
-- **测试**：`pytest` 45 用例全离线可跑（respx 模拟 http、真实 fixture、真实 MCP stdio E2E），`network` 标记的实网用例默认跳过；
+- **测试**：`pytest` 45 用例全离线可跑（respx 模拟 http、真实 fixture、真实 MCP stdio E2E），`network` 标记的实网用例默认跳过；CI 附覆盖率报告（pytest-cov）；
 - **Lint / 类型**：`ruff check` 与 `mypy src` 零告警；
-- **依赖锁**：[requirements.lock](requirements.lock)（`uv pip compile --universal` 生成，跨平台 marker），Docker 构建按锁安装保证可复现；
-- **CI**：GitHub Actions（ruff + mypy + pytest）；
+- **供应链**：[requirements.lock](requirements.lock)（`uv pip compile --universal` 生成，跨平台 marker）锁定依赖，Docker 按锁安装保证可复现构建；CI 独立作业跑 `pip-audit` 审计锁内依赖；
+- **CI**：GitHub Actions，Python 3.11–3.13 矩阵（ruff + mypy + pytest + coverage）+ audit 作业；
+- **结构化输出**：五个工具均以 pydantic 模型返回 → 通过 MCP `outputSchema` / `structuredContent` 发布，client 可做结构化校验；
 - **配置即环境变量**：`.env.example` 全量注释，LLM 端点/模型/数据源均可插拔；
 - **日志**：全部走 stderr——stdout 是 MCP stdio 的 JSON-RPC 信道，这是 MCP server 的硬约束；
-- **HTTP 传输安全**：按 MCP 规范默认启用 Host/Origin 校验（DNS-rebinding 防护，白名单经 `MCP_ALLOWED_HOSTS` 扩展）；compose 端口仅发布到宿主机 loopback；容器以非 root 用户运行。
+- **HTTP 传输安全**：按 MCP 规范默认启用 Host/Origin 校验（DNS-rebinding 防护，白名单经 `MCP_ALLOWED_HOSTS` 扩展）；compose 端口仅发布到宿主机 loopback；容器以非 root 用户运行；healthcheck 为 MCP 层握手探针。
 
 ## 已知局限（诚实声明）
 

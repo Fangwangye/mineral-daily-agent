@@ -62,6 +62,9 @@ class TestOfflineE2E:
         async with MCPFleet(specs=resolve_specs(), mode="stdio") as fleet:
             assert set(fleet.tools) == EXPECTED_TOOLS
             assert fleet.failed_servers == {}
+            # 五个工具都应发布 outputSchema（pydantic 返回类型 → 结构化输出）
+            for name, entry in fleet.tools.items():
+                assert entry.tool.outputSchema, f"{name} 缺少 outputSchema"
             result = await run_agent("Pilbara 锂矿今日简报", fleet, fake, max_steps=6)
 
         assert result.steps == 2

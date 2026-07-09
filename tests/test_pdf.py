@@ -82,14 +82,14 @@ class TestTonnageScale:
 class TestServerTool:
     async def test_fixture_keyword(self):
         result = await extract_resources("fixture")
-        assert result["confidence"] >= 0.9
-        assert len(result["rows"]) == 7
-        assert any("fixture" in n for n in result["notes"])
+        assert result.confidence >= 0.9
+        assert len(result.rows) == 7
+        assert any("fixture" in n for n in result.notes)
 
     async def test_offline_http_falls_back_to_fixture(self):
         result = await extract_resources("https://example.com/report.pdf")
-        assert any("回落" in n for n in result["notes"])
-        assert result["rows"]
+        assert any("回落" in n for n in result.notes)
+        assert result.rows
 
     async def test_bad_path_rejected(self):
         with pytest.raises(ValueError, match="无法解析"):
