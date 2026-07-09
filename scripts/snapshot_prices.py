@@ -49,8 +49,11 @@ async def refresh() -> None:
             "as_of": date.today().isoformat(),
             "series": [{"date": p.day.isoformat(), "price": p.price} for p in windowed],
         }
-        print(f"[ok]   {commodity}: {len(windowed)} 个点 "
-              f"({windowed[0].day} ~ {windowed[-1].day})" if windowed else f"[warn] {commodity}: 窗口内无数据")
+        if windowed:
+            span = f"{windowed[0].day} ~ {windowed[-1].day}"
+            print(f"[ok]   {commodity}: {len(windowed)} 个点 ({span})")
+        else:
+            print(f"[warn] {commodity}: 窗口内无数据")
 
     SNAPSHOT.write_text(json.dumps(existing, ensure_ascii=False, indent=2), "utf-8")
     print(f"快照已写入 {SNAPSHOT}")

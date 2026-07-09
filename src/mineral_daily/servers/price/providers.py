@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from mineral_daily.common import http
+from mineral_daily.common.parsing import parse_number
 
 logger = logging.getLogger(__name__)
 
@@ -78,30 +79,6 @@ class PriceSeries:
     source: str
     is_live: bool
     points: list[PricePoint]  # 按日期升序
-
-
-def parse_number(raw: str) -> float | None:
-    """解析欧式/美式混排数字："9 456,00"、"9.456,00"、"9,456.00"、"9456"。"""
-    s = raw.replace("\xa0", " ").replace("&nbsp;", " ").strip()
-    s = re.sub(r"\s+", "", s)
-    if not s or not re.search(r"\d", s):
-        return None
-    if "," in s and "." in s:
-        # 最后出现的分隔符是小数点
-        if s.rfind(",") > s.rfind("."):
-            s = s.replace(".", "").replace(",", ".")
-        else:
-            s = s.replace(",", "")
-    elif "," in s:
-        head, _, tail = s.rpartition(",")
-        if len(tail) == 3 and head:  # 千分位
-            s = s.replace(",", "")
-        else:
-            s = s.replace(",", ".")
-    try:
-        return float(s)
-    except ValueError:
-        return None
 
 
 def parse_westmetall(html: str) -> list[PricePoint]:
